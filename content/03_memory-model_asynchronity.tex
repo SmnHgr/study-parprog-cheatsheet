@@ -1,0 +1,64 @@
+\section{Memory Models}
+
+Java
+
+\begin{lstlisting}
+public class SpinLock {
+  private AtomicBoolean locked = new AtomicBoolean(false); // Initialwert false
+  public void acquire() {
+    while (locked.getAndSet(true)) { } // Lese alten Wert und setze neuen Wert atomar (Rückgabe = gelesener Wert)
+  public void release() {
+    locked.set(false); } } // Setze false und mache sichtbar
+\end{lstlisting}
+
+\lstinline{boolean compareAndSet (boolean expect, boolean update)} Setzt update, wenn Wert gleich expect ist (atomar), retourniert true bei erfolgreichem Update
+
+\begin{lstlisting}
+AtomicInteger squares = new AtomicInteger(0);
+squares.updateAndGet(x -> x * x); // mit Lambda
+\end{lstlisting}
+
+
+\textbf{Atomic Klassen} Boolean, Integer, Long, Referenzen \lstinline{AtomicReference<Node<T>>}, Array-Elemente
+
+\textbf{atomare Operationen} \lstinline{addAndGet()} \lstinline{getAndAdd()}\lstinline{compareAndSet(compare, newValue)}
+
+\textbf{Lock-freie Datenstrukturen} \lstinline{ConcurrentLinkedQueue<V>} \lstinline{ConcurrentLinkedDeque<V>} \lstinline{ConcurrentSkipListSet<V>} \lstinline{ConcurrentHashMap<K, V>} \lstinline{ConcurrentSkipListMap<K, V>}
+
+lock-freie BankAccount Klasse
+
+\begin{lstlisting}
+public class BankAccount {
+  private AtomicInteger balance = new AtomicInteger(0);
+  public void deposit(int amount) { balance.getAndAdd(amount); }
+  public boolean withdraw(int amount) {
+    int oldValue;
+    do {
+      oldValue = balance.get();
+      if(oldValue < amount){ return false; }
+    } while (!balance.compareAndSet(oldValue, oldValue - amount));
+    return true;
+  }
+  public int getBalance() { return balance.get(); }
+}
+\end{lstlisting}
+
+.NET
+
+lock-freie BankAccount Klasse
+\begin{lstlisting}
+public class BankAccount {
+  private int balance = 0;
+  public int Balance {
+    get { return Thread.VolatileRead(ref balance); }
+    private set { balance = value; } }
+
+  public void Deposit(int amount) { Interlocked.Add(ref balance, amount); }
+  public bool Withdraw(int amount) {
+    int oldValue;
+    do {
+      oldValue = Balance;
+      if (oldValue < amount) { return false; }
+    } while (oldValue != Interlocked.CompareExchange(ref balance, oldValue - amount, oldValue));
+    return true; } }
+\end{lstlisting}

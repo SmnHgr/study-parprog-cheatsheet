@@ -1,0 +1,215 @@
+\section{Synchronisation}
+
+\begin{lstlisting}
+// A,B Ausgaben können durcheinander sein (zeitlich entkoppelt, Threads laufen beliebig verzahnt/parallel)
+public class MultiThreadTest {
+    public static void main (String[] args ) {
+        // Thread-Implementierung
+        var a = new Thread(Thread(() -> multiPrint("A"));
+        var b = new Thread(Thread(() -> multiPrint("B"));
+        a.start(); b.start(); // richtiger Thread wird hier erzeugt und gestartet (führt run()-Methode des Runnable Interface aus)
+        a.join() /* blockiert solange Thread a läuft */ b.join(); }
+    static void multiPrint (String label) {
+        for (int i = 0; i < 10; i++) {
+            System.out.println(label + ": " + i);
+            Thread.sleep(100) // versetzt laufenden Thread in Wartezustand
+        } } }
+\end{lstlisting}
+
+\lstinline{Thread.yield()} laufender Thread gibt Prozessor frei und direkt wieder ready \lstinline{currentThread()} gerade ausführende Thread-Instanz \lstinline{t1.setDaemon(true)} markiert Thread als Daemon
+
+% TODO equired?
+\begin{minipage}[t]{0.5\linewidth}
+    \begin{lstlisting}
+// Explizite Runnable-Implementation
+class SimpleLogic implements Runnable {
+    @Override
+    public void run () {
+        // thread behavior
+    } }
+var myThread = new Thread(new SimpleLogic());
+myThread.start();
+    \end{lstlisting}
+\end{minipage}
+\begin{minipage}[t]{0.5\linewidth}
+    \begin{lstlisting}
+// Sub-Klasse von Thread
+class SimpleThread extends Thread {
+    @Override
+    public void run () { // thread behavior } }
+var myThread = new SimpleThread(); myThread.start();
+    \end{lstlisting}
+\end{minipage}
+
+\subsection{Race Condition}
+Mehrere Threads lesen dasselbe Objekt und überschreiben diesen Wert basierend auf der erhaltenen Antwort (Bsp. \lstinline{deposit()} ist Critical Section: zuerst \lstinline{balance} lesen dann \lstinline{+= amount}) Zwischen Lesen und Schreiben kann ein anderer Thread die \lstinline{balance} geändert haben $\rightarrow$ Gegenseitiger Ausschluss (Mutual Exclusion)
+
+\subsection{Synchronisationsmechanismen/-primitiven}
+
+\subsubsection{Synchronized (Monitor-Lock) - Java}
+
+\begin{lstlisting}
+// deposit und withdraw sind im gegenseitigem Ausschluss
+class BankAccount {
+    private int balance = 0;
+    public synchronized void deposit (int amount) {
+        this.balance += amount; // kritischer Abschnitt
+        notifyAll(); } // Wecke alle im Monitor wartenden Threads
+    public synchronized boolean withdraw (int amount) {
+        while (amount > this.balance) { wait(); } // gibt Lock temporär frei und wartet auf Bedingung (im Monitor Model)
+        this.balance -= amount; }
+// synchronized(object){ statements } ist eine explizite Angabe, auf welcher Instanz gelockt wird:
+public void deposit(int amount) { // explizite Angabe auf welcher Instanz gelockt wird
+    synchronized(this) {this.balance += amount;} }
+\end{lstlisting}
+
+\lstinline{notify()} signalisiert/weckt nur einen beliebigen (zufälligen), wartenden Thread (Achtung: wartet vielleicht auf andere Bedingung, führt zu ewigem Warten)
+
+\begin{lstlisting}
+class BoundedBuffer <T> {
+  private Queue<T> queue = new LinkedList<>();
+  private int limit = 1; // or initialize in constructor
+  public synchronized void put(T item) throws InterruptedException {
+    while (queue.size () == limit) { wait(); } // await non full
+    queue.add(item); notifyAll(); } // signal non empty
+  public synchronized T get() throws InterruptedException {
+    while (queue.size () == 0) { wait(); } // await non empty
+    var item = queue.remove(); notifyAll(); // non full
+    return item; } }
+\end{lstlisting}
+
+\subsubsection{Semaphor - Java}
+
+\begin{lstlisting}
+// Mutex Semaphore als alternative zu synchronized
+class BoundedBuffer <T> {
+  private Queue<T> queue = new LinkedList<>();
+  private Semaphore upperLimit = new Semaphore(CAPACITY, true); // Initialisierung mit cap freien Ressourcen, true = fair
+  private Semaphore lowerLimit = new Semaphore(0, true);
+  // private Semaphore mutex = new Semaphore(1, true); // ersetzt synchronized/Monitor-Lock für Mutual exclusion
+  public void put(T item) throws InterruptedException {
+    upperLimit.acquire(); // bezieht freie Ressource (oder wartet, wenn keine verfügbar)
+    synchronized (queue) { queue.add (item); }
+    // mutex.acquire(); queue.add(item); mutex.release();
+    lowerLimit.release(); } // gibt Ressource frei, benachrichtigt Wartende
+  public T get() throws InterruptedException {
+    T item;
+    lowerLimit.acquire();
+    synchronized (queue) { item = queue.remove(); }
+    // mutex.acquire(); T item = queue.remove(); mutex.release();
+    upperLimit.release();
+    return item; } }
+\end{lstlisting}
+
+\lstinline{acquire(int permits)} wartet, solange Zähler $<$ permits ist
+
+\subsubsection{Lock \& Condition - Java}
+\begin{lstlisting}
+class BoundedBuffer<T> {
+  private Queue<T> queue = new LinkedList<>();
+  private Lock monitor = new ReentrantLock(true); // Lock-Objekt, Sperre für Eintritt in Monitor, true = fair
+  private Condition nonFull = monitor.newCondition();
+  private Condition nonEmpty = monitor.newCondition();
+  public void put(T item) throws InterruptedException {
+    monitor.lock();
+    try {
+      while (queue.size() == Capacity) { nonFull.await(); }
+      queue.add(item); nonEmpty.signal();
+    } finally { monitor.unlock(); } }
+  public T get() throws InterruptedException {
+	monitor.lock();
+	try {
+	  while (queue.size() == 0) { nonEmpty.await(); }
+	  T item = queue.remove();
+	  nonFull.signal();
+	  return item;
+	} finally { monitor.unlock(); } } }
+\end{lstlisting}
+
+\subsubsection{Read-Write Locks - Java}
+
+\begin{lstlisting}
+var rwLock = new ReentrantReadWriteLock(true);
+rwLock.readLock().lock(); // read-only accesses (Shared Lock)
+rwLock.readLock().unlock();
+rwLock.writeLock().lock(); // read and write accesses (Exclusive Lock)
+rwLock.writeLock().unlock();
+\end{lstlisting}
+
+\subsubsection{CountDownLatch - Java}
+
+\begin{lstlisting}
+public class CarRaceWithLatch {
+  private static final int CARS = 10;
+  private final CountDownLatch ready = new CountDownLatch(CARS); // warte auf N cars
+  private final CountDownLatch start = new CountDownLatch(1);
+
+  private class Car extends Thread {
+  	private final int number;
+  	public Car(int number) { this.number = number; }
+
+  	@Override
+  	public void run() {
+  	  try {
+  	  	ready.countDown(); // Car n: Bin bereit; Zähler um 1 dekrementieren
+  	  	start.await(); // Warte auf Startsignal (dass Count Down 0 ist)
+  	  	System.out.println("Car " + number + " drives ");
+  	  } catch (InterruptedException e) { throw new AssertionError(e); } } }
+
+  private void simulate() throws InterruptedException { // von main() aufgerufen
+  	for (int count = 0; count < CARS; count++) { new Car(count).start(); } // führt run() in Threads aus
+  	ready.await(); // Warte, bis alle bereit sind (dass Count Down 0 ist)
+  	System.out.println("Start race ");
+  	start.countDown(); } } // Gib Startsignal
+\end{lstlisting}
+
+\subsubsection{Cyclic Barrier - Java}
+
+\begin{lstlisting}
+public class CarRaceWithCyclicBarrier2 {
+  private static final int CARS = 10;
+  private static final int ROUNDS = 10;
+
+  private final CyclicBarrier start = new CyclicBarrier(
+  		CARS + 1, () -> { // Anzahl sich treffender Threads
+  			System.out.println("New round start");
+  		});
+
+  private class Car extends Thread {
+  	private final int number;
+  	public Car(int number) { this.number = number; }
+
+  	@Override
+  	public void run() {
+  		try {
+  			for (int round = 0; round < ROUNDS; round++) {
+  				start.await(); // Autos fahren direkt los, sobald alle da sind
+  				System.out.println("Car " + number + " round " + round); }
+  		} catch (InterruptedException | BrokenBarrierException e) { throw new AssertionError(e); } } }
+
+  private void simulate() throws InterruptedException, BrokenBarrierException { // von main() aufgerufen
+  	for (int count = 0; count < CARS; count++) { new Car(count).start(); }
+  	for (int round = 0; round < ROUNDS; round++) { start.await(); }
+  }
+}
+\end{lstlisting}
+
+\subsection{Gefahren}
+
+\subsubsection{Race Conditions}
+
+\subsubsection{Deadlocks}
+
+\begin{lstlisting}
+class BankAccount {
+  private int balance;
+  public synchronized void transfer(Acc to, int amount) {
+    balance -= amount;
+    to.deposit(amount); } // implizit geschachtelter Lock
+  public synchronized void deposit (int amount) {
+    balance += amount; } }
+a.transfer(b, 20); /* Thread 1 */ b.transfer(a, 50); // Thread 2
+\end{lstlisting}
+
+
+\subsubsection{Starvation}
