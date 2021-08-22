@@ -1,27 +1,33 @@
 \section{Actor Model}
+eigener lokaler/isolierter Speicher, nur Nachrichten-Kommunikation, \textcolor{darkGreen}{kein Shared Memory/State}, \textcolor{darkGreen}{keine Data Races}, \textcolor{darkGreen}{Senden/Empfangen nicht blockierend (asynchron)}, \textcolor{darkGreen}{keine Locks zwischen Actoren}
 
 \subsection{Akka Actors - Java}
+Shared Memory, Data Races, Race Conditions möglich, blockierendes Empfangen $\rightarrow$ Deadlocks möglich
 
 \begin{lstlisting}
 public class Ping { final int count; ... }
-public class NumberPrinter extends UntypedActor { // Actor kommuniziert Message-Objekte
+public class NumberPrinter extends UntypedActor {
+  // Actor kommuniziert Message-Objekte
   public void onReceive(final Object message) { // Nachricht ist ein Objekt
-  	if (message instanceof Ping) { // Empfangsmethode: Run to Completion pro eingehende Nachricht
+  	if (message instanceof Ping) {
+      // Empfangsmethode: Run to Completion pro eingehende Nachricht
   	  int counter = ((Ping) message).count;
   	  if(counter == 5){ getContext().system().terminate(); } // stoppt nach Bearbeitung der aktuellen Message, alt. getContext().stop(actorRef);
       System.out.println(counter);
       var response = new Ping(counter + 1);
-      getSender().tell(response, getSelf());
-    } } }
+      getSender().tell(response, getSelf()); } } }
 
 ActorSystem system = ActorSystem.create("System");
-ActorRef printer = system.actorOf(Props.create(NumberPrinter.class)); // Erzeugung per Reflection, Adresse eines Actors (immutable)
-ActorRef sender = ActorRef.noSender(); // Sender der Message wird mitgegeben Methoden von Actor
-for (int msg = 0; msg < 100; msg++) { printer.tell(msg, sender); } // Einfaches asynchrones Senden
+// Erzeugung per Reflection, Adresse eines Actors (immutable)
+ActorRef printer = system.actorOf(Props.create(NumberPrinter.class));
+// Sender der Message wird mitgegeben Methoden von Actor
+ActorRef sender = ActorRef.noSender();
+// Einfaches asynchrones Senden
+for (int msg = 0; msg < 100; msg++) { printer.tell(msg, sender); }
 system.shutdown(); // Gebe "End-Signal" an alle Actors
 \end{lstlisting}
 
-\subsubsection{Verteilte Actors}
+\textbf{Verteilte Actors}
 
 \begin{lstlisting}
 ActorSelection printer = system.actorSelection("akka.tcp://System@server:2552/user/printer"); // Actor Adresse, leichtgewichtiger als ActorRef, kann 0..n Actors umfassen (Broadcast möglich, selektriert Teilbaum)

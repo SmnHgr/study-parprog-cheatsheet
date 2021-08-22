@@ -1,149 +1,151 @@
 \section{Thread Pools}
 
+Worker-Threads sind Daemon Threads
+
+\textcolor{blue}{Run to completion} jeder Thread hat Stack, bleibt bei verschiedenen Tasks derselbe
+
+\textcolor{blue}{Fire and Forget} wird nicht bis Thread-Ende gewartet
+
+\textcolor{blue}{Caller-zentrisch} Aufrufende Methode wartet auf Beendigung der zurückgegebenen Futures
+
+\textcolor{blue}{Callee-zentrisch} Jede asynchrone Methode löst nach seiner Beendigung selbstständig eine Continuation aus
+
 \subsection{Fork-Join-Pool - Java}
 
-\begin{lstlisting}
-// Future Verwendung
-var threadPool = new ForkJoinPool(); // moderner Thread Pool
-Future<Integer> future = threadPool.submit(() -> { // blockiert nicht, lanciert Task ohne zu Warten, Future repräsentiert zukünftiges Resultat
-    /*...*/ return value; }); // Task in Thread Pool einreihen, Task kann Rückgabe haben
-int result = future.get() // Blockiert, bis Task beendet (bei Fehler ExecutionException)
+\textbf{Rekursive Tasks}
+Tasks können Untertasks starten und abwarten, abhängig von Threshold/Array-Länge
 
-// Einfaches Beispiel
-var left = threadPool.submit(() -> count(leftPart));
-var right = threadPool.submit(() -> count(rightPart));
-result = left.get() + right.get();
+\begin{lstlisting}
+class CountTask extends RecursiveTask<Integer> { // RecursiveAction = void
+  private final static int THRESHOLD = 1;
+  private final int from, to; private final int[] array;
+
+  public CountTask(int from, int to) { this.from=from; this.to=to; }
+
+  // Task-Implementierung
+  protected Integer compute() {
+    // Tuning mit Schwellenwert (keine Über-Parallelisierung
+    if(to - from > THRESHOLD) {
+      int middle = (from + to) / 2;
 \end{lstlisting}
-
-\subsubsection{Rekursive Tasks}
-Tasks können Untertasks starten und abwarten
+\begin{minipage}[t]{0.6\linewidth}
+    \begin{lstlisting}
+      // parallel count (task)
+      var left = new CountTask (from, middle);
+      var right = new CountTask (middle, to);
+      // als Sub-Task in anderem Task starten
+      left.fork(); right.fork();
+      // auf Task-Ende warten / Resultat abfragen
+      return right.join () + left.join(); }
+    \end{lstlisting}
+\end{minipage}
+\begin{minipage}[t]{0.39\linewidth}
+    \begin{lstlisting}
+// parallel action (void return)
+invokeAll(
+  new UpdateAr(array, fro, mid),
+  new UpdateAr(array, mid, to) );
+    \end{lstlisting}
+\end{minipage}
 
 \begin{lstlisting}
-class CountTask extends RecursiveTask<Integer> { // RecursiveAction = RecursiveTask<void>
-  private final int lower, upper;
-  public CountTask(int lower, int upper) {
-    this.lower = lower; this.upper = upper; }
-  protected Integer compute() { // Task-Implementierung
-    if(upper - lower > THRESHOLD) { // Tuning mit Schwellenwert (keine Über-Parallelisierung
-      // parallel count
-      int middle = (lower + upper) / 2;
-      var left = new CountTask (lower, middle);
-      var right = new CountTask (middle, upper);
-      left.fork(); right.fork(); // starte als Sub-Task in einem anderen Task
-      return right.join () + left.join(); } // warte auf Task-Ende und frage Resultat ab
     else {
       // sequential count
       int count = 0;
-		for (int number = lower; number < upper; number++) {
-		  if (isPrime(number)) { count++; }
-		}
-		return count;
-    } } }
-int result = threadPool.invoke(new CountTask(2, INPUT_SIZE)); // mit explizitem Thread Pool, blockiert, ein Sub-Task starten und abwarten
+      for (int num = from; num < to; num++){ if (isPrime(num)) { count++; }}
+      return count; } } }
+// Start
+// blockiert, startet ein Sub-Task und wartet ab
 int result = new CountTask(2, INPUT_SIZE).invoke(); // Standard Pool
+var threadPool = new ForkJoinPool(); // moderner Thread Pool
+int result = threadPool.invoke(new CountTask(2, INPUT_SIZE));//expliz. ThreadPool
+
+// Future Verwendung: blockiert nicht, lanciert Task ohne Warten
+Future<Integer> future /* hält zukünftiges Resultat */ = threadPool.submit(
+    () -> { /* longOperation */ return value; }); // Rückgabe möglich
+int result = future.get() // Blockiert, bis Task beendet (Fehler=ExecutionExcep.)
 \end{lstlisting}
 
 \lstinline{invokeAll(a, b)} equals \lstinline{a.fork(); b.fork(); b.join(); a.join(); } Mehrere Sub-Tasks starten und abwarten
 
-\subsection{Asynchrone Programmierung - Java}
-
+\textbf{Asynchrone Programmierung}
+Task verketten, hängt Folgeaufgabe an asynchrone Aufgabe
 \begin{lstlisting}
-// Klassisch (Operation in Thread oder Thread Pool auslagern)
-Future<int> future = threadPool.submit(() -> longOperation());
-// other work
-process(future.get()); // fragt Resultat über future ab, Caller wartet auf Task Ende und holt sich das Resultat
-
-// Modern (Starte asynchrone Aufgabe in Standard Pool)
 CompletableFuture<int> future = CompletableFuture
-.supplyAsync(()->longOperation()); // runAsync falls kein return
-//other work
-process(future.get());
-
-// Continuation
-future
-  .thenApply(second) // Task verketten, für continuation mit Rückgabe
-  .thenAccept(result -> System.out.println(result)) // Continuation, hängt Folgeaufgabe an asynchrone Aufgabe
-
-// Asynchrone Continuations
-thenApplyAsync().thenAcceptAsync()
+.supplyAsync(()->longOperation()).thenApply(second); // Continuation mit return
+.runAsync().thenAccept(result -> System.out.println("Continuation")) // kein return (Fire and Forget)
 
 // Multi-Continuation
-CompletableFuture.allOf(future1, future2)
-.thenAcceptAsync(continuation); // Warten aufeinander
-CompletableFuture.any(future1, future2)
-.thenAcceptAsync(continuation) // Sobald einer fertig ist
-// runAsync() ist Fire and Forget. Workers sind Deamons und ignorieren Exceptions
+CompletableFuture.allOf(fut1, fu2) // Warten aufeinander
+CompletableFuture.any(fu1, fu2) // Sobald einer fertig ist
 \end{lstlisting}
 
+
+
+
 \subsection{Task Parallel Library (TPL) - .NET (\#C)}
-
-
+läuft auf Anzahl Worker Threads (Anzahl CPUs)
 \begin{lstlisting}
 var myThread = new Thread(() => {
   for (int i = 0; i < 100; i ++) {
     Console.WriteLine("MyThread step {0}", i); } });
 myThread.Start(); myThread.Join();
-
-// Monitor in .NET
-class BankAccount {
-  private decimal balance;
-  private object syncObject = new() // Monitor Hilfsobjekt
-  public void Withdraw(decimal amount) {
-    lock (syncObject) { // Analog zu synchronized Stmt
-      while (amount > balance) { // Schlaufe auch notwendig
-        Monitor.Wait(syncObject); } // kein Spurious Wakeup
-      balance -= amount; } }
-  public void Deposit(decimal amount) {
-    lock (syncObject) {
-      balance += amount;
-      Monitor.PulseAll(syncObject)}}} // wie notifyAll
 \end{lstlisting}
 
+%\begin{lstlisting}
+%// Monitor in .NET
+%class BankAccount {
+%  private decimal balance;
+%  private object syncObject = new() // Monitor Hilfsobjekt
+%  public void Withdraw(decimal amount) {
+%    lock (syncObject) { // Analog zu synchronized Stmt
+%      while (amount > balance) { // Schlaufe auch notwendig
+%        Monitor.Wait(syncObject); } // kein Spurious Wakeup
+%      balance -= amount; } }
+%  public void Deposit(decimal amount) {
+%    lock (syncObject) {
+%      balance += amount;
+%      Monitor.PulseAll(syncObject) }}} // wie notifyAll
+%\end{lstlisting}
 
-\subsubsection{Task Parallelität}
+\textbf{Task Parallelität - Explizite Tasks starten und warten}
 \begin{lstlisting}
 Task<int> /* Rückgabetyp */ task = Task.Run(() => {
   var left = Task.Run(() => Count(leftPart)); // starte Sub-Task
   var right = Task.Run(() => Count(rightPart)); // starte Sub-Task
   int total = left.Result + right.Result; // warte auf Sub-Tasks
-  return total; // task implementation
-});
+  return total; }); // task implementation
+
 // perform other activity
 task.Wait(); // Blockiert, bis Task beendet ist
 Console.Write(task.Result); // Blockiert bis Task Ende und liefert dann Resultat
-
 \end{lstlisting}
 
-\subsubsection{Datenparallelität}
+\textbf{Datenparallelität - Parallele Statements und Queries }
 \begin{lstlisting}
-Parallel.Invoke( // Statements
-  () => MergeSort(l, m),
-  () => MergeSort(m, r)
-); // Barriere der Task am Ende
-
-Parallel.ForEach(list, file => Convert(file)); // Loop, Schlaufen-Bodies potentiell parallel ausführen, Barriere dieser Tasks am Ende
-
-Parallel.For(0, array.Length, i => DoComputation(array[i])); // unabhängige Iteration
-\end{lstlisting}
-
-
-% TODO required
-\subsubsection{Parallel LINQ (PLINQ)}
-
-\begin{lstlisting}
-// Beliebige Reihenfolge als Resultat
-from book in bookCollection.AsParallel()
-  where book.Title.Contains("Concurrency")
-  select book.ISBN
-
-// Reihenfolge erhalten (Performance-Nachteil)
-from number in inputList.AsParallel().AsOrdered()
-  select IsPrime(number)
+// Barriere der Tasks jeweils am Ende
+Parallel.Invoke( () => MergeSort(l, m), () => MergeSort(m, r) ); // Statements
+// Iteration unabhängig/parallel ausführen, Barriere der Tasks am Ende
+Parallel.ForEach(list, file => Convert(file)); // Loop, Schlaufen-Bodies
+Parallel.For(0, array.Length, i => DoComputation(array[i])); // Iterator
 \end{lstlisting}
 
 
 
-\subsubsection{Asynchrone Programmierung}
+%\textbf{Parallel LINQ (PLINQ)}
+%
+%\begin{lstlisting}
+%// Beliebige Reihenfolge als Resultat
+%from book in bookCollection.AsParallel()
+%  where book.Title.Contains("Concurrency")
+%  select book.ISBN
+%
+%// Reihenfolge erhalten (Performance-Nachteil)
+%from number in inputList.AsParallel().AsOrdered()
+%  select IsPrime(number)
+%\end{lstlisting}
+
+\textbf{Asynchrone Programmierung - Mit Continuation Style}
 
 \begin{lstlisting}
 var task = Task.Run(LongOperation); // Task repräsentiert asynchronen Aufruf
@@ -155,64 +157,3 @@ task1.ContinueWith(task2).ContinueWith(task3);
 Task.WhenAll(task1, task2).ContinueWith(continuation);
 Task.WhenAny(task1, task2).ContinueWith(continuation);
 \end{lstlisting}
-
-\subsection{GUI}
-
-\subsubsection{UI Dispatching - Java}
-
-\begin{lstlisting}
-button.addActionListener(event -> {
-  new Thread(() -> { // bis hier ist UI Thread
-    var text = readHugeFile();
-    SwingUtilities.invokeLater(() -> { // asynchron, bis hier ist Worker Thread
-      textArea.setText(text); }); // wieder UI Thread versetzt
-    }).start(); }); // UI Thread
-
-// Background Worker Beispiel
-class BackgrCalc extends SwingWorker<Integer, Void> { // Int: Resultat von Background, Void: Zwischenresultat
-  @Override
-  public Integer doInBackground () { // separater Thread (zeitaufwendige Operationen als Task in Thread Pool)
-    return longComputation (); }
-  @Override
-  protected void done() { // UI Thread (UI-Zugriffe durch EventDispatchThread)
-    try { int result = get(); // gibt Resultat von doInBackground()
-      label.setText("Result: " + result); // UI Thread
-    } catch (InterruptedException|ExecutionException e) {
-    } } }
-\end{lstlisting}
-
-\subsubsection{UI Dispatching - .NET}
-
-\begin{lstlisting}
-public class MainWindow : Window {
-  private void startCalculationButton_Click(...) {
-  calculationResultLabel.Content = "(computing)";
-  int number;
-  if (int.TryParse(numberTextBox.Text, out number)) {
-    Task.Run(() => { // UI Thread ruft auf
-    	int result = LongCalculation(number); // in anderen Thread outsourcen
-    	Dispatcher.InvokeAsync(() => { // UI Update wieder als UI Event dispatchen (WPF)
-    	  resultLabel.Content = result; }); }); } } }
-
-control.BeginInvoke(delegate) // WinForm
-// synchron mit Invoke (ohne async)
-\end{lstlisting}
-
-\begin{lstlisting}
-public async Task<int> LongOperationAsync() { ... } // Async Methode, muss await enthalten
-
-Task<int> task = LongOperationAsync();
-// Other Work
-int result = await task; // Warte auf Beendigung der Async Methode, liefert Resultat des Tasks
-
-// Beispiel
-async Task<string /* Rückgabetyp string */> ConcatWebSitesAsync(string url1, string url2) { // Suffix "Async" als Namenskonvention
-  HttpClient client = new HttpClient();
-  Task<string> download1 = client.GetStringAsync(url1);
-  Task<string> download2 = client.GetStringAsync(url2); // async Task<string> GetStringAsync(string url)
-  string site1 = await download1;
-  string site2 = await download2;
-  return site1 + site2; } // Direkte Rückgabe des String
-\end{lstlisting}
-
-

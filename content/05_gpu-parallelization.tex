@@ -1,8 +1,6 @@
-\section{GPU Parallelisierung}
+\section{GPU Parallelisierung - CUDA}
 
-\subsection{CUDA (Computer Unified Device Architecture, Nvidia)}
-
-\textbf{Single Instruction Multiple Threads (SIMT)}
+\textbf{Single Instruction Multiple Threads (SIMT)} alle Cores (SP) führen gleiche Instruktion (oder keine) aus \textcolor{red}{CPU/GPU kein gemeinsamer Hauptspeicher}
 
 \textbf{CUDA Blocks}
 
@@ -13,14 +11,16 @@
 \begin{lstlisting}
 /* CUDA Kernel -> GPU (Device) */
 __global__ // Läuft auf GPU (Device)
-void VectorAddKernel (float *A, float *B, float *C, int N){ // N = Anzahl Elemente
-  int i = blockIdx.x * blockDim.x + threadIdx.x; // Index aus Blocknummer und -grösse sowie Thread Id innerhalb Bloc
-  if (i < N) { C[i] = A[i] + B[i]; } } // Boundary Check (überflüssige Threads machen nichts)
+void VectorAddKernel (float *A, float *B, float *C, int N){ // N = Anzahl Elemen
+  // Index=Blocknummer * -grösse + ThreadId innerhalb Block
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  // Boundary Check: überflüssige Threads machen nichts
+  if (i < N) { C[i] = A[i] + B[i]; } }
 \end{lstlisting}
 
 \begin{lstlisting}
 /* CUDA Ausführung - läuft auf CPU (Host) */
-void CudaVectorAdd(float * A, float * B, float * C, int N){ // Läuft auf CPU (Host)
+void CudaVectorAdd(float * A, float * B, float * C, int N){//Läuft auf CPU (Host)
   size_t size = N * sizeof(float);
   float *d_A, *d_B, *d_C;
 
@@ -47,8 +47,7 @@ void CudaVectorAdd(float * A, float * B, float * C, int N){ // Läuft auf CPU (H
 int main() {
   int N = 10000000; size_t size = N * sizeof(float);
 
-  float *A = (float *)malloc(size); fillRandomArray(A, N);
-  float *B = (float *)malloc(size); fillRandomArray(B, N);
+  float *A = (float *)malloc(size); float *B = (float *)malloc(size);
   float *C = (float *)malloc(size);
 
   cudaVectorAdd(A, B, C, N);
@@ -58,7 +57,7 @@ int main() {
   return 0; }
 \end{lstlisting}
 
-\subsubsection{Unified Memory}
+\subsection{Unified Memory}
 Automatischer Transfer CPU/GPU (keine expliziten Memory Copies mehr)
 \begin{lstlisting}
 void cudaVectorAdd(float *A, float *B, float *C, int N) {
@@ -90,21 +89,23 @@ int main() {
   return 0; }
 \end{lstlisting}
 
-\textbf{3D Thread Hierarchie}
+\textbf{3D Thread Hierarchie (Matrizen, eigentlich 2D)}
 
 \begin{lstlisting}
 const int C_ROWS = 1000; const int C_COLS = 2000; const int A_COLS = 1500;
 const int A_ROWS = C_ROWS; const int B_ROWS = A_COLS; const int B_COLS = C_COLS;
 
-const int BLOCK_SIZE = 32;
+const int BLOCK_SIZE = 32; // always
 __global__
 void matrixMultKernel(float *A, float *B, float *C) {
   int row = blockIdx.x * blockDim.x + threadIdx.x;
-  int col = blockIdx.y * blockDim.y + threadIdx.y; // 2D Thread Hierarchie (Matrizen)
-  if (row < C_ROWS && col < C_COLS) {
+  int col = blockIdx.y * blockDim.y + threadIdx.y;
+  if (row < C_ROWS && col < C_COLS) { // Boundary check
   	float sum = 0.0f; // 0
-  	for (int k = 0; k < A_COLS; k++) { sum += A[row * A_COLS + k] * B[k * B_COLS + col];    } // äquivalent zu A[row, k] * B[k, col]
-  	C[row * C_COLS + col] = sum; } } // äquivalent zu C[row, col]
+  	for (int k = 0; k < A_COLS; k++) {
+  	  // equals A[row, k] * B[k, col]
+      sum += A[row * A_COLS + k] * B[k * B_COLS + col]; }
+  	C[row * C_COLS + col] = sum; } } // equals C[row, col], offset in simple array
 
 cudaMatrixMult(float *A, float *B, float *C) {
   float *d_A, *d_B, *d_C;
@@ -119,9 +120,11 @@ cudaMatrixMult(float *A, float *B, float *C) {
   handleCudaError(cudaMemcpy(d_A, A, sizeA, cudaMemcpyHostToDevice));
   handleCudaError(cudaMemcpy(d_B, B, sizeB, cudaMemcpyHostToDevice));
 
-  dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE); // x-Achse, y-Achse -> 1024 (maximum block size)
-  dim3 blocksPerGrid((C_ROWS + BLOCK_SIZE - 1) / BLOCK_SIZE, (C_COLS + BLOCK_SIZE - 1) / BLOCK_SIZE);
+  // x-Achse, y-Achse -> 1024
+  dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE); // maximum block size
+  dim3 blocksPerGrid((C_ROWS + BLOCK_SIZE - 1) / BLOCK_SIZE, (C_COLS + BLOCK_SIZE - 1) / BLOCK_SIZE); // maximum grid size
   matrixMultKernel<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C);
+
   handleCudaError(cudaGetLastError());
 
   handleCudaError(cudaMemcpy(C, d_C, sizeC, cudaMemcpyDeviceToHost));
@@ -132,16 +135,15 @@ cudaMatrixMult(float *A, float *B, float *C) {
 
 \subsection{Optimierungstechniken}
 
-\subsubsection{Speichermodell}
+\textbf{Shared Memory (Cache)} nur innerhalb gleichen Blocks sichtbar, \lstinline{__shared__} definiert Shared Memory (Speicher-Allokation), \lstinline{__syncthreads()} synchronisiert alle Threads innerhalb eines Blocks (notwendig für effizientes Caching) \textcolor{red}{möglichst nicht in if/else setzen}
 
-
-
-\subsubsection{Synchronisation}
+\textcolor{blue}{Tiled Transposing} Jeweils ein Tile mit Coalescing vom Device Memory ins Shared Memory einlesen. SyncThreads. Danach vom Shared Memory das Transponierte Element mit Coalescing zurück in Device Memory schreiben
 
 \begin{lstlisting}
 __global__
 void matrixMultKernel(float *A, float *B, float *C){
 
+  // Shared Memory
   __shared__ float Asub[TILE_SIZE][TILE_SIZE]; // Statische Array-Grösse allozieren
   __shared__ float Bsub[TILE_SIZE][TILE_SIZE]; // (Mehrdimensionalität bei statischer Grösse erlaubt)
 
@@ -158,26 +160,24 @@ void matrixMultKernel(float *A, float *B, float *C){
       Asub[ty][tx] = A[row * A_COLS + tile * TILE_SIZE + tx]; }
     if (col < B_COLS && tile * TILE_SIZE + ty < B_ROWS) {
       Bsub[ty][tx] = B[(tile * TILE_SIZE + ty) * B_COLS + col];
-	}
-	__syncthreads(); // Cache is ready, Synchronisiert alle Threads innerhalb eines Blocks (notwendig für effizientes Caching)
-	// Multipliziere Zeile von A-Tile mit Spalte von B-Tile aus dem Shared Memory
-	if (row < C_ROWS && col < C_COLS) {
-	  for (int ksub = 0; ksub < TILE_SIZE; ksub++) {
-	    if (tile * TILE_SIZE + ksub < A_COLS) {
+    }
+    __syncthreads(); // Cache is ready
+    // Multipliziere Zeile von A-Tile mit Spalte von B-Tile aus dem Shared Memory
+    if (row < C_ROWS && col < C_COLS) {
+      for (int ksub = 0; ksub < TILE_SIZE; ksub++) {
+        if (tile * TILE_SIZE + ksub < A_COLS) {
           sum += Asub[ty][ksub] * Bsub[ksub][tx]; } } }
-    __syncthreads(); } // Einrückung ?????
-	if (row < C_ROWS && col < C_COLS) {
-	  C[row * C_COLS + col] = sum; }
+    __syncthreads(); }
+    if (row < C_ROWS && col < C_COLS) {
+      C[row * C_COLS + col] = sum; }
 \end{lstlisting}
 
 
 \textbf{Warps}
-Block wird intern in Wraps zerlegt (zu je 32 Threads), alle Threads führen gleiche Instruktion aus (SIMD), Verzweigungen (if, switch, while, do, for) werden abwechselnd ausgeführt (Divergenz)
+Block wird intern in Wraps zerlegt (zu je 32 Threads), alle Threads führen gleiche Instruktion aus (SIMD), Verzweigungen (if, switch, while, do, for) werden abwechselnd ausgeführt (Divergenz) \textcolor{blue}{Pro Warp selbe Instruktion!}
 
 \textbf{Divergenz}
 Gibt es unterschiedliche Verzweigungen im selben Warp, führt SM Instruktion der einen Verzweigung durch (Bsp. if) $\rightarrow$ Die anderen Threads müssen warten. Dann wieder die andere Verzweigung (Bsp. else)
 
 
-\subsubsection{(Memory) Coalescing}
-
-\textbf{Burst} grösserer Datenblock (32 Bytes) wird mit einem kombinierten Zugriff auf konsekutiven Speicherbereich geladen (1 Transaktion)
+\textbf{(Memory) Coalescing} \textcolor{blue}{Burst} grösserer Datenblock (32 Bytes) wird mit einem kombinierten Zugriff auf konsekutiven Speicherbereich geladen (1 Transaktion) \textcolor{green}{x/y bei row/col/Launch-Konfig vertauschen} \lstinline{data[(Ausdruck ohne threadIdx.x /* offset */) + threadIdx.x]} in Zugriff

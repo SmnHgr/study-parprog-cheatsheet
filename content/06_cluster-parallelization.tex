@@ -1,8 +1,10 @@
-\section{Cluster Parallelisierung}
+\section{Cluster Parallelisierung - mpiexec -n <<size>>}
+
+viele CPU Cores, Faktor 100 und mehr!
 
 \subsection{Message Passing Interface (MPI)}
 
-Verteiltes Programmiermodell, basiert auf Actor/CSP-Prinzip, Jeder Prozess hat seine Identifikation (Rank) und arbeitet unabhängig in seinem Adressraum, starten und terminieren synchron $\rightarrow$ können untereinander kommunizieren (Nachrichten Senden/Empfangen), Synchronisation mit Barrieren
+Verteiltes Programmiermodell, basiert auf Actor/CSP-Prinzip, Jeder Prozess hat seine Identifikation (Rank) und arbeitet unabhängig in seinem Adressraum (\textcolor{darkGreen}{kein Shared Memory}), starten und terminieren synchron $\rightarrow$ können untereinander kommunizieren (Nachrichten Senden/Empfangen), Synchronisation mit Barrieren \textcolor{red}{Senden blockiert bis Empfangen!}
 
 
 \begin{lstlisting}
@@ -25,14 +27,29 @@ int main(int argc, char* argv[]){
   // Senden/Empfangen eines Int-Wertes
   int tag = 0; // frei wählbare Nummer für Nachrichtenart >=0
   int sender = 0;
+  int length = 1;
   if (rank == 0) {
-    int value = rand(); int to;
-    int length = 1;
-    for (to = 1; to < size; to++) { MPI_Send(&value, length, MPI_INT, to, tag, MPI_COMM_WORLD); }
-  } else {
+    // generate/load data
+\end{lstlisting}
+\begin{minipage}[t]{0.5\linewidth}
+    \begin{lstlisting}
+    int value = rand();
+    \end{lstlisting}
+\end{minipage}
+\begin{minipage}[t]{0.5\linewidth}
+    \begin{lstlisting}
+    array = read_array_file(&length);
+    int partition = length / size;
+    // for int offset = rank * partition;
+    \end{lstlisting}
+\end{minipage}
+\begin{lstlisting}
+    for (int to = 1; to < size; to++) { // verteile auf andere Prozesse
+      MPI_Send(&value, length, MPI_INT, to, tag, MPI_COMM_WORLD); }
+  } else { // Sub-Prozesses
     int value;
-    MPI_Recv(&value, 1, MPI_INT, sender, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    printf("%i received by %i", value, rank); }
+    MPI_Recv(&value, length, MPI_INT, sender, tag, MPI_COM.., MPI_STATUS_IGNORE);
+    printf("%i received by %i", value, rank); } // compute subtask
 
   // Warte, dass alle Prozesse Barriere erreichen
   MPI_Barrier(MPI_COMM_WORLD);
@@ -58,29 +75,29 @@ int main(int argc, char* argv[]){
 \textcolor{blue}{Scatter} \lstinline{MPI_Scatter(&input_array, size, MPI_INT, &output_value, 1, MPI_INT, 0 /* sender */, MPI_COMM_WORLD)}
 \textcolor{blue}{Gather} \lstinline{MPI_Gather(&input_value, 1, MPI_INT, &output_array, 1, MPI_INT, 0 /* receiver */, MPI_COMM_WORLD)}
 
-\subsubsection{Monte Carlo - C}
-
-\begin{lstlisting}
-long count_hits(long trials) {
-  long hits = 0, i;
-  for (i = 0; i < trials; i++) {
-    double x = (double)rand()/RAND_MAX;
-    double y = (double)rand()/RAND_MAX;
-    if (x * x + y * y <= 1) { hits++; } }
-  return hits; }
-int main(int argc, char* argv[]) {
-  MPI_Init(&argc, &argv);
-
-  int rank, size;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-  srand(rank * 4711); // willkürlicher Seed für jeden Prozess
-  long hits = count_hits(TRIALS / size) // Jeder Prozess rechnet Bruchteil
-  long total;
-  MPI_Reduce(&hits, &total, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD); // Prozess 0 erhält Gesamtwert
-  if (rank==0) { double pi = 4 * ((double)total / TRIALS); }
-
-  long hits = count_hits(TRIALS);
-  double pi = 4 * ((double)hits / TRIALS); }
-\end{lstlisting}
+%\subsubsection{Monte Carlo - C}
+%
+%\begin{lstlisting}
+%long count_hits(long trials) {
+%  long hits = 0, i;
+%  for (i = 0; i < trials; i++) {
+%    double x = (double)rand()/RAND_MAX;
+%    double y = (double)rand()/RAND_MAX;
+%    if (x * x + y * y <= 1) { hits++; } }
+%  return hits; }
+%int main(int argc, char* argv[]) {
+%  MPI_Init(&argc, &argv);
+%
+%  int rank, size;
+%  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+%  MPI_Comm_size(MPI_COMM_WORLD, &size);
+%
+%  srand(rank * 4711); // willkürlicher Seed für jeden Prozess
+%  long hits = count_hits(TRIALS / size) // Jeder Prozess rechnet Bruchteil
+%  long total;
+%  MPI_Reduce(&hits, &total, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD); // Prozess 0 erhält Gesamtwert
+%  if (rank==0) { double pi = 4 * ((double)total / TRIALS); }
+%
+%  long hits = count_hits(TRIALS);
+%  double pi = 4 * ((double)hits / TRIALS); }
+%\end{lstlisting}
