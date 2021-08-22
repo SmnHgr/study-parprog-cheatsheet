@@ -1,101 +1,3 @@
-\section{Concurrency - Python}
-
-\textbf{Global Interpreter Lock (GIL)} Nur ein Thread kann Python Byte-Code ausführen, kein Speedup für CPU-Bound Operationen möglich (Ausnahme: Libraries geben GIL frei, Bsp. Numpy), Data Races dennoch möglich (Reordering möglich, Visibility nicht garantiert) $\rightarrow$ kein Memory Model definiert
-
-\textbf{Shared Memory} muss explizit definiert werden $\rightarrow$ \lstinline{multiprocessing.Value}, erfordert Angabe eines Type-Codes oder ctypes
-
-\begin{lstlisting}
-from multiprocessing import Process
-...
-result = Value('i', -1, lock=False) # oder: Value(c_int, -1 /* Initialwert des Shared-Memory */, lock=False)
-process = Process(target=compute_fibonacci, args=(10, result))
-...
-def compute_fibonacci(n, result ) // Hilfsfunktion zum Speichern des Resultats
-  result.value = fibonacci(n)
-\end{lstlisting}
-
-
-\subsubsection{Threads}
-
-\begin{lstlisting}
-from threading import Thread
-if __name__ == '__main__':
-  t = Thread(target=fibonacci, args=(10,) )
-  t.start()
-  ...
-  t.join()
-\end{lstlisting}
-
-\subsubsection{Prozesse}
-
-\begin{minipage}[t]{0.5\linewidth}
-    \begin{lstlisting}
-from multiprocessing import Process
-// bei Process zwingend notwendig (sonst wird der start immer wieder neu aufgerufen)!
-if __name__ == '__main__':
-  p = Process(target=fibonacci, args=(10,) ) // Funktionen und Argumente müssen "picklebar" (serialisierbar) sein
-  p.start()
-  ...
-  p.join()
-    \end{lstlisting}
-\end{minipage}
-\begin{minipage}[t]{0.48\linewidth}
-    \begin{lstlisting}
-from multiprocessing import Process
-if __name__ == '__main__':
-  total_primes = 0
-  results = [Value('i', 0, lock=False) for _ in range(TOTAL_PROCESSES)]
-  processes = [Process(target=is_prime_process, args=(i, results[i])) for i in range(TOTAL_PROCESSES)]
-  for process in processes:
-    process.start()
-  for i, process in enumerate(processes):
-    process.join()
-    total_primes += results[i].value
-    \end{lstlisting}
-\end{minipage}
-
-
-\subsubsection{Pools}
-
-\begin{lstlisting}
-from concurrent.futures.process import ProcessPoolExecutor
-// oder from concurrent.futures.thread import ThreadPoolExecutor
-
-if __name__ == '__main__':
-  with ProcessPoolExecutor() as pool:
-  	future = pool.submit(fibonacci, 10)
-  	print(future.result()) // Blockiert, bis Task beendet wurde
-
-  	multiple = pool.map(fibonacci, [1, 2, 4, 10, 30]) // gleich zu berechnende Liste übergeben
-  	for result in multiple:
-  	  print(result) // Blockierender Generator: Wartet auf jeweiliges Resultat (Aufrufreihenfolge wird berücksichtigt)
-    all_results = list(multiple) // Alternative
-\end{lstlisting}
-
-\subsubsection{asyncio (async/await)}
-
-Coroutinen werden erst beim zugehörigen await ausgeführt (keine parallele Ausführung, ausser Coroutine wird als Task verpackt $\rightarrow$ \lstinline{asyncio.create_task(<Coroutine>)} / \lstinline{asyncio.gather(<Coroutine1>, <Coroutine2>, ...)})
-
-\begin{lstlisting}
-import asyncio
-async def sub_routine(n): % Coroutine-Functions
-  print(f'Start {n}')
-  await asyncio.sleep(1)
-  print(f'Ende {n}')
-
-async def main():
-  coroutine1 = sub_routine(1) % return: Coroutine-Object
-  coroutine2 = sub_routine(2)
-  await coroutine2
-  await coroutine1
-
-if __name__ == '__main__':
-  asyncio.run(main()) // start-coroutine, startet asyncio Event-Loop
-\end{lstlisting}
-Keine parallele Ausführung. → async
-Methoden werden erst beim zugehörigem await ausgeführt
-
-
 \section{Concurrency - JavaScript}
 Grundsätzlich Single-Threaded mit einem Event-Loop, schützt nicht vor Race Conditions
 
@@ -127,3 +29,104 @@ function fibonacci(n) {
   if(n === 1) { return 1; }
   return fibonacci(n - 1) + fibonacci(n - 2); }
 \end{lstlisting}
+
+\columnbreak
+
+\section{Concurrency - Python}
+
+\textbf{Global Interpreter Lock (GIL)} Nur ein Thread kann Python Byte-Code ausführen, kein Speedup für CPU-Bound Operationen möglich (Ausnahme: Libraries geben GIL frei, Bsp. Numpy), Data Races dennoch möglich (Reordering möglich, Visibility nicht garantiert) $\rightarrow$ kein Memory Model definiert
+
+\textbf{Shared Memory} muss explizit definiert werden $\rightarrow$ \lstinline{multiprocessing.Value}, erfordert Angabe eines Type-Codes oder ctypes
+
+\begin{lstlisting}
+from multiprocessing import Process
+...
+result = Value('i', -1, lock=False) # oder: Value(c_int, -1 /* Initialwert des Shared-Memory */, lock=False)
+process = Process(target=compute_fibonacci, args=(10, result))
+...
+def compute_fibonacci(n, result ) // Hilfsfunktion zum Speichern des Resultats
+  result.value = fibonacci(n)
+\end{lstlisting}
+
+
+\subsection{Threads}
+
+\begin{lstlisting}
+from threading import Thread
+if __name__ == '__main__':
+  t = Thread(target=fibonacci, args=(10,) )
+  t.start()
+  ...
+  t.join()
+\end{lstlisting}
+
+\subsection{Prozesse}
+
+\begin{minipage}[t]{0.5\linewidth}
+    \begin{lstlisting}
+from multiprocessing import Process
+// bei Process zwingend notwendig (sonst wird der start immer wieder neu aufgerufen)!
+if __name__ == '__main__':
+  p = Process(target=fibonacci, args=(10,) ) // Funktionen und Argumente müssen "picklebar" (serialisierbar) sein
+  p.start()
+  ...
+  p.join()
+    \end{lstlisting}
+\end{minipage}
+\begin{minipage}[t]{0.48\linewidth}
+    \begin{lstlisting}
+from multiprocessing import Process
+if __name__ == '__main__':
+  total_primes = 0
+  results = [Value('i', 0, lock=False) for _ in range(TOTAL_PROCESSES)]
+  processes = [Process(target=is_prime_process, args=(i, results[i])) for i in range(TOTAL_PROCESSES)]
+  for process in processes:
+    process.start()
+  for i, process in enumerate(processes):
+    process.join()
+    total_primes += results[i].value
+    \end{lstlisting}
+\end{minipage}
+
+
+\subsection{Pools}
+
+\begin{lstlisting}
+from concurrent.futures.process import ProcessPoolExecutor
+// oder from concurrent.futures.thread import ThreadPoolExecutor
+
+if __name__ == '__main__':
+  with ProcessPoolExecutor() as pool:
+  	future = pool.submit(fibonacci, 10)
+  	print(future.result()) // Blockiert, bis Task beendet wurde
+
+  	multiple = pool.map(fibonacci, [1, 2, 4, 10, 30]) // gleich zu berechnende Liste übergeben
+  	for result in multiple:
+  	  print(result) // Blockierender Generator: Wartet auf jeweiliges Resultat (Aufrufreihenfolge wird berücksichtigt)
+    all_results = list(multiple) // Alternative
+\end{lstlisting}
+
+\subsection{asyncio (async/await)}
+
+Coroutinen werden erst beim zugehörigen await ausgeführt (keine parallele Ausführung, ausser Coroutine wird als Task verpackt $\rightarrow$ \lstinline{asyncio.create_task(<Coroutine>)} / \lstinline{asyncio.gather(<Coroutine1>, <Coroutine2>, ...)})
+
+\begin{lstlisting}
+import asyncio
+async def sub_routine(n): % Coroutine-Functions
+  print(f'Start {n}')
+  await asyncio.sleep(1)
+  print(f'Ende {n}')
+
+async def main():
+  coroutine1 = sub_routine(1) % return: Coroutine-Object
+  coroutine2 = sub_routine(2)
+  await coroutine2
+  await coroutine1
+
+if __name__ == '__main__':
+  asyncio.run(main()) // start-coroutine, startet asyncio Event-Loop
+\end{lstlisting}
+Keine parallele Ausführung. → async
+Methoden werden erst beim zugehörigem await ausgeführt
+
+

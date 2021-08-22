@@ -1,5 +1,5 @@
 \section{Actor Model}
-eigener lokaler/isolierter Speicher, nur Nachrichten-Kommunikation, \textcolor{darkGreen}{kein Shared Memory/State}, \textcolor{darkGreen}{keine Data Races}, \textcolor{darkGreen}{Senden/Empfangen nicht blockierend (asynchron)}, \textcolor{darkGreen}{keine Locks zwischen Actoren}
+eigener lokaler/isolierter Speicher, nur Nachrichten-Kommunikation, Objekte (Actors) sind aktiv \textcolor{darkGreen}{kein Shared Memory/State}, \textcolor{darkGreen}{keine Data Races}, \textcolor{darkGreen}{keine Race Conditions} \textcolor{darkGreen}{Senden/Empfangen nicht blockierend (asynchron)}, \textcolor{darkGreen}{keine Locks zwischen Actoren}
 
 \subsection{Akka Actors - Java}
 Shared Memory, Data Races, Race Conditions möglich, blockierendes Empfangen $\rightarrow$ Deadlocks möglich

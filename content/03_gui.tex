@@ -3,7 +3,7 @@
 Single-Threaded (sonst hohes Deadlock-Risiko), nur UI-Thread manipuliert GUI (sonst Race Condition Risiko) \textcolor{red}{langlaufende/blockierende Operationen}, \textcolor{red}{von Worker Thread lesen/schreiben auf GUI}
 
 \subsection{UI Dispatching - Java}
-delegiert Komponentenzugriffe an UI Thread
+delegiert Komponentenzugriffe an UI Thread, UI Operation wird als Events in die UI Event Queue eingereiht
 
 \textbf{verhindert Blockierung UI Thread}
 \begin{lstlisting}
@@ -65,9 +65,12 @@ control.BeginInvoke(delegate) // WinForm
 wird als Event von UI-Thread ausgeführt
 
 
-\textbf{async Function} \textcolor{red}{muss await enthalten} sonst Compiler-Warnung, keine Asynchronität \textcolor{red}{keine ref-/out-Parameter} Rückgabetypen \lstinline{void} \lstinline{Task} \lstinline{Task<T>}
+\textbf{async Function} \textcolor{red}{muss await enthalten} sonst Compiler-Warnung/keine Asynchronität \textcolor{red}{keine ref-/out-Parameter} Rückgabetypen \lstinline{void} \lstinline{Task} \lstinline{Task<T>}
 
 \includegraphics[width=0.7\linewidth]{03_ausfuehrung-thread.png}
+
+Erster Abschnitt vor Await läuft Methode synchron durch Aufrufer, Abschnitt nach Await Läuft später nach Task-Ende (Continuation) in anderem Thread
+
 
 
 \begin{lstlisting}

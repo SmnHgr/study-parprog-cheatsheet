@@ -1,6 +1,10 @@
 \section{GPU Parallelisierung - CUDA}
 
-\textbf{Single Instruction Multiple Threads (SIMT)} alle Cores (SP) führen gleiche Instruktion (oder keine) aus \textcolor{red}{CPU/GPU kein gemeinsamer Hauptspeicher}
+\textbf{Streaming Multiprocessor (SM)} erhält Instruktion, beinhaltet mehrere SPs
+
+\textbf{Streaming Processors/Cores (SP)} führt Instruktionen aus
+
+\textbf{Single Instruction Multiple Threads (SIMT)} alle Cores (SP) führen gleiche Instruktion (oder keine)/Kernel-Code aus \textcolor{red}{CPU/GPU kein gemeinsamer Hauptspeicher}
 
 \textbf{CUDA Blocks}
 
@@ -135,7 +139,7 @@ cudaMatrixMult(float *A, float *B, float *C) {
 
 \subsection{Optimierungstechniken}
 
-\textbf{Shared Memory (Cache)} nur innerhalb gleichen Blocks sichtbar, \lstinline{__shared__} definiert Shared Memory (Speicher-Allokation), \lstinline{__syncthreads()} synchronisiert alle Threads innerhalb eines Blocks (notwendig für effizientes Caching) \textcolor{red}{möglichst nicht in if/else setzen}
+\textbf{Shared Memory (Cache)} Synchronisation, nur innerhalb gleichen Blocks sichtbar, \lstinline{__shared__} definiert Shared Memory (Speicher-Allokation), \lstinline{__syncthreads()} synchronisiert alle Threads innerhalb eines Blocks (notwendig für effizientes Caching) \textcolor{red}{möglichst nicht in if/else setzen} \textcolor{red}{nutzlos wenn jeder Thread auf ein anderes Element zugreift}
 
 \textcolor{blue}{Tiled Transposing} Jeweils ein Tile mit Coalescing vom Device Memory ins Shared Memory einlesen. SyncThreads. Danach vom Shared Memory das Transponierte Element mit Coalescing zurück in Device Memory schreiben
 
@@ -180,4 +184,4 @@ Block wird intern in Wraps zerlegt (zu je 32 Threads), alle Threads führen glei
 Gibt es unterschiedliche Verzweigungen im selben Warp, führt SM Instruktion der einen Verzweigung durch (Bsp. if) $\rightarrow$ Die anderen Threads müssen warten. Dann wieder die andere Verzweigung (Bsp. else)
 
 
-\textbf{(Memory) Coalescing} \textcolor{blue}{Burst} grösserer Datenblock (32 Bytes) wird mit einem kombinierten Zugriff auf konsekutiven Speicherbereich geladen (1 Transaktion) \textcolor{green}{x/y bei row/col/Launch-Konfig vertauschen} \lstinline{data[(Ausdruck ohne threadIdx.x /* offset */) + threadIdx.x]} in Zugriff
+\textbf{(Memory) Coalescing} Speicherzugriffe \textcolor{blue}{Burst} grösserer Datenblock (32 Bytes) wird mit einem kombinierten Zugriff auf konsekutiven Speicherbereich geladen (1 Transaktion) \textcolor{green}{x/y bei row/col/Launch-Konfig vertauschen} \lstinline{data[(Ausdruck ohne threadIdx.x /* offset */) + threadIdx.x]} in Zugriff

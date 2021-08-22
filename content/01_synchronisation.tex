@@ -4,7 +4,7 @@
 
 \textcolor{blue}{InterruptedException} \textcolor{red}{nur bei Waiting-Mechanismen} (\lstinline{wait()}, \lstinline{acquire()}, nicht aber bei \lstinline{notify()}, \lstinline{notifyAll()}, \lstinline{release()}
 
-\lstinline{Thread.yield()} laufender Thread gibt Prozessor frei und direkt wieder ready \lstinline{currentThread()} gerade ausführende Thread-Instanz \lstinline{t1.setDaemon(true)} markiert Thread als Daemon
+\lstinline{Thread.yield()} laufender Thread gibt Prozessor frei und direkt wieder ready \textcolor{red}{gibt Monitor-Lock nicht frei} \lstinline{currentThread()} gerade ausführende Thread-Instanz \lstinline{t1.setDaemon(true)} markiert Thread als Daemon
 
 \textbf{Monitor (Threads)}
 
@@ -12,11 +12,11 @@ Monitor mit einem inneren Warteraum
 
 \textcolor{blue}{Überholproblem} keine garantierte Reihenfolge/Fairness
 
-\lstinline{notify()} informiert/weckt nicht zwingend Thread welcher Bedingung erfüllt, für Uniform Waiters (Alle warten auf die gleiche Bedingung), One-In-One-Out (höchstens einen Wartenden kann profitieren, nur einem Thread kann geholfen werden)
+\lstinline{notify()} informiert/weckt nicht zwingend Thread welcher Bedingung erfüllt, für Uniform Waiters: 1 semantische Bedingung (Bedingung interessiert jeden wartenden Thread), One-In-One-Out (höchstens ein wartender Thread kann weitermachen)
 
 \lstinline{notifyAll()} verschiedene Wartebedingungen im Monitor, mehrere Threads können möglicherweise weitermachen
 
-\textcolor{blue}{Signal and Continue} Monitor Lock wird nicht direkt nach notify weitergegeben!
+\textcolor{blue}{Signal and Continue} Monitor-Lock wird nicht direkt nach notify weitergegeben! Signalisierender Thread behält Monitor und macht weiter
 
 \textcolor{blue}{Spurious Wakeup} Thread wird aufgeweckt, aber Bedingung, auf die Thread gewartet hat, ist nicht erfüllt
 
@@ -69,14 +69,15 @@ class CyclicBarrier {
 
 \subsection{Gefahren}
 
-\textbf{Race Conditions} Programm verhaltet sich nicht mehr richtig (tut nicht was es soll), nicht atomar, Lost updates möglich (wenn Sichtbarkeit nicht garantiert, ungültige Umordnungen, falsches Programmverhalten, Lesen und Schreiben ist nicht atomar) Sichtbarkeitsproblem (wenn es entscheidend ist ob Thread 1 zuerst auf x schreibt oder Thread 2 x liest, mind. 1 Write-Access) \textcolor{red}{get-Statements} \textcolor{red}{Berechnungen in synchronized Parameter-Liste}
+\textbf{Race Conditions} Programm verhaltet sich nicht mehr richtig (tut nicht was es soll), nicht atomar (zu wenig Synchronisation), Lost updates möglich (wenn Sichtbarkeit nicht garantiert, ungültige Umordnungen, falsches Programmverhalten, Lesen und Schreiben ist nicht atomar) Sichtbarkeitsproblem (wenn es entscheidend ist ob Thread 1 zuerst auf x schreibt oder Thread 2 x liest, mind. 1 Write-Access) \textcolor{red}{get-Statements} \textcolor{red}{Berechnungen in synchronized Parameter-Liste}
 
-\textbf{Data Race} nebenläufiger unsynchronisierter R-W/W-W Zugriff auf gleiche Variable, keine garantierte Sichtbarkeit/Ordnung $\rightarrow$ \lstinline{volatile} und alle Synchronisationprimitiven lösen auf, Atomarität behebt Data Race
+\textbf{Data Race} nebenläufiger unsynchronisierter R-W/W-W Zugriff auf gleiche Variable (Speicher), keine garantierte Sichtbarkeit/Ordnung $\rightarrow$ \lstinline{volatile} und alle Synchronisationprimitiven lösen auf, \textcolor{darkGreen}{Atomarität behebt Data Race}
 
-\textbf{Deadlock} Ressource wird nicht mehr frei \textcolor{red}{Locks in Locks} \textcolor{red}{zyklische Warteabhängigkeiten} (in synchronized anderes Objekt verwendet) Thread T1 ruft a.fn(b) auf, Thread T2 ruft b.fn(a) auf, T1 sperrt a, T2 sperrt b, T1 ruft geschachtelt ''b'' auf (ist durch T2 blockiert), T2 ruft geschachtelt ''a'' auf (ist durch T1 blockiert) \textcolor{darkGreen}{C\# mit Task-Abhängigkeiten nicht möglich} \textcolor{darkGreen}{Lineare Sperrordnung} nur geschachtelt in aufsteigender Reihenfolge sperren
+\textbf{Deadlock} Gegenseitiges Aussperren von Threads, Ressource wird nicht mehr frei \textcolor{red}{Geschachtelte Locks} Locks in Locks \textcolor{red}{zyklische Warteabhängigkeiten} (in synchronized anderes Objekt verwendet) Thread T1 ruft a.fn(b) auf, Thread T2 ruft b.fn(a) auf, T1 sperrt a, T2 sperrt b, T1 ruft geschachtelt ''b'' auf (ist durch T2 blockiert), T2 ruft geschachtelt ''a'' auf (ist durch T1 blockiert) \textcolor{darkGreen}{C\# mit Task-Abhängigkeiten nicht möglich}, \textcolor{darkGreen}{Lineare Sperrordnung} nur geschachtelt in aufsteigender Reihenfolge sperren
 
+\textbf{LiveLocks Threads haben sich gegenseitig permanent blockiert, führen aber noch Warteinstruktionen aus (verbrauchen CPU während Deadlock)
 
-\textbf{Starvation} Bedingung wird von wartenden Thread erfüllt aber immer wieder überholt, \textcolor{red}{Java Monitor sehr anfällig}, Atomare Operationen und while auch! \textcolor{darkGreen}{Fairness einschalten}
+\textbf{Starvation} Kontinuierliche Fortschrittsbehinderung von Threads wegen Fairness-Problemen, Bedingung wird von wartenden Thread erfüllt aber immer wieder überholt, \textcolor{red}{Java Monitor sehr anfällig}, Atomare Operationen und while auch! \textcolor{darkGreen}{Fairness einschalten}
 
 \subsection{Bewusster Synchronisationsverzicht}
 

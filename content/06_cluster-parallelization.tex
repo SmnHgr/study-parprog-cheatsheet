@@ -4,7 +4,7 @@ viele CPU Cores, Faktor 100 und mehr!
 
 \subsection{Message Passing Interface (MPI)}
 
-Verteiltes Programmiermodell, basiert auf Actor/CSP-Prinzip, Jeder Prozess hat seine Identifikation (Rank) und arbeitet unabhängig in seinem Adressraum (\textcolor{darkGreen}{kein Shared Memory}), starten und terminieren synchron $\rightarrow$ können untereinander kommunizieren (Nachrichten Senden/Empfangen), Synchronisation mit Barrieren \textcolor{red}{Senden blockiert bis Empfangen!}
+Verteiltes Programmiermodell, basiert auf Actor/CSP-Prinzip, Jeder Prozess hat seine Identifikation (Rank) und arbeitet unabhängig in seinem Adressraum (\textcolor{darkGreen}{kein Shared Memory/kein Data Race}), starten und terminieren synchron $\rightarrow$ können untereinander kommunizieren (Nachrichten Senden/Empfangen), Synchronisation mit Barrieren \textcolor{red}{Senden blockiert bis Empfangen!}
 
 
 \begin{lstlisting}

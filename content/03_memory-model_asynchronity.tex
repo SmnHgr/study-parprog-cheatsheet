@@ -75,19 +75,19 @@ public class BankAccount {
 
 \subsection{Visibility}
 
-Thread bekommt Variablenänderung/-manipulation eines anderen Threads nicht mit $\rightarrow$ Endlos-Loop weil gleicher Wert \textcolor{red}{gitb es bei .Net nicht!}
+Thread bekommt Variablenänderung/-manipulation eines anderen Threads nicht mit (Änderung wird nicht sichtbar) $\rightarrow$ Endlos-Loop weil gleicher Wert \textcolor{red}{gitb es bei .Net nicht!}
 
-\textcolor{blue}{Locks/Release \& acquire} Änderungen vor \lstinline{release()} werden bei \lstinline{acquire()} sichtbar
+\textcolor{blue}{Lock-Release \& -Acquire} Änderungen vor release werden bei acquire sichtbar
 
 \textcolor{blue}{Volatile Variable} möchten alles vorherige sehen
 
 \subsection{Ordering}
 
-\textcolor{blue}{as-if-serial} Sequenzielles Verhalten jedes einzelnen Threads bleibt erhalten
+\textcolor{blue}{Program Order (as-if-serial)} Sequenzielles Verhalten jedes einzelnen Threads bleibt erhalten
 
-\textcolor{blue}{Total Order} Synchronisationsbefehle werden zueinander nie umgenordnet (Locking, volatile, Thread Start/Join)
+\textcolor{blue}{Synchronisation Order (Total Order)} Synchronisationsbefehle werden zueinander nie umgenordnet (Locking, volatile, Thread Start/Join)
 
-\textcolor{blue}{Partial Order} \textcolor{red}{Alles andere kann umgeordnet werden!}
+\textcolor{blue}{Happens-Before Relation (Partial Order)} \textcolor{red}{Alles andere kann umgeordnet werden!}
 
 \textbf{.NET Ordering} \textcolor{red}{volatile schützt nicht vor Ordering!}
 
