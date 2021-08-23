@@ -38,8 +38,8 @@ void CudaVectorAdd(float * A, float * B, float * C, int N){//Läuft auf CPU (Hos
   cudaMemcpy(d_B, B, size, cudaMemcpyHostToDevice);
 
   // 3. Kernel ausführen
-  int blockSize = 1024; // oder threadsPerBlock / Anzahl Threads ???
-  int gridSize = (N + blockSize - 1) / blockSize; // oder blocksPerGrid ???, N / blockSize aufgerundet (Anzahl Blöcke)
+  int blockSize = 1024; // oder threadsPerBlock / Anzahl Threads
+  int gridSize = (N + blockSize - 1) / blockSize; // oder blocksPerGrid, N / blockSize aufgerundet (Anzahl Blöcke)
   VectorAddKernel<<<gridSize,blockSize>>>(d_A, d_B, d_C, N);
 
   // 4. Daten von GPU zu CPU transferieren (DeviceToHost)
