@@ -55,9 +55,11 @@ int main(int argc, char* argv[]){
   MPI_Barrier(MPI_COMM_WORLD);
 
   // Aggregation von Teilresultaten (zwischen Prozessen)
-  MPI_AllReduce(&value, &total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD); // Jeder erhält Gesamtresultat als Rückgabewert, beinhaltet implizite Barriere/Broadcast über alle Prozesse
+  // Jeder erhält Gesamtresultat als Rückgabewert, beinhaltet implizite Barriere/Broadcast über alle Prozesse
+  MPI_AllReduce(&value, &total, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-  MPI_Reduce(&value, &total, 1, MPI_INT, MPI_SUM, receiverRank, MPI_COMM_WORLD) // Nur Prozess receiverRank sieht das Gesamtresultat, kein Broadcast
+  // Nur Prozess receiverRank sieht das Gesamtresultat, kein Broadcast
+  MPI_Reduce(&value, &total, 1, MPI_INT, MPI_SUM, receiverRank, MPI_COMM_WORLD)
 
   MPI_Finalize(); // MPI Finalisierung
   return 0; }

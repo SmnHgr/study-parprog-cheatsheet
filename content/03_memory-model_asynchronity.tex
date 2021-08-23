@@ -3,12 +3,10 @@
 \lstinline{volatile} garantiert immer Visiblity/Ordering und Atomarität innerhalb einer Operation auch bei Datentypen grösser als 32 Bit \textcolor{red}{nicht aber ++/--/-=/...}
 
 \subsection{Atomicity}
-Primitive Datentypen (32 Bit) int, bool, char, short, byte, Objekt-Referenzen, long/double mit \lstinline{volatile} atomar
+Primitive Datentypen (32 Bit) int, bool, char, short, byte, Objekt-Referenzen, long/double mit \lstinline{volatile} atomar \textcolor{red}{in .NET separate Klasse nötig}
 
 
-\textbf{Atomare Operation - Java}
-
-\textcolor{red}{Starvation-Problem!}
+\textbf{Atomare Operation - Java} \textcolor{red}{Starvation-Problem!}
 
 \begin{lstlisting}
 private final AtomicReference<Node> top = new AtomicReference<>();
@@ -87,7 +85,7 @@ Thread bekommt Variablenänderung/-manipulation eines anderen Threads nicht mit 
 
 \textcolor{blue}{Synchronisation Order (Total Order)} Synchronisationsbefehle werden zueinander nie umgenordnet (Locking, volatile, Thread Start/Join)
 
-\textcolor{blue}{Happens-Before Relation (Partial Order)} \textcolor{red}{Alles andere kann umgeordnet werden!}
+\textcolor{blue}{Happens-Before Relation (Partial Order)} alles vor dem Lesen wird sichtbar gemacht \textcolor{red}{Alles andere kann umgeordnet werden!}
 
 \textbf{.NET Ordering} \textcolor{red}{volatile schützt nicht vor Ordering!}
 

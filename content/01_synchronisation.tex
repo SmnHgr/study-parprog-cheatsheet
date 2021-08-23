@@ -69,13 +69,13 @@ class CyclicBarrier {
 
 \subsection{Gefahren}
 
-\textbf{Race Conditions} Programm verhaltet sich nicht mehr richtig (tut nicht was es soll), nicht atomar (zu wenig Synchronisation), Lost updates möglich (wenn Sichtbarkeit nicht garantiert, ungültige Umordnungen, falsches Programmverhalten, Lesen und Schreiben ist nicht atomar) Sichtbarkeitsproblem (wenn es entscheidend ist ob Thread 1 zuerst auf x schreibt oder Thread 2 x liest, mind. 1 Write-Access) \textcolor{red}{get-Statements} \textcolor{red}{Berechnungen in synchronized Parameter-Liste}
+\textbf{Race Conditions} Programm verhaltet sich nicht mehr richtig (tut nicht was es soll), nicht/zu wenig atomar (zu wenig Synchronisation), Lost updates möglich (wenn Sichtbarkeit nicht garantiert, ungültige Umordnungen, falsches Programmverhalten, Lesen und Schreiben ist nicht atomar) Sichtbarkeitsproblem (wenn es entscheidend ist ob Thread 1 zuerst auf x schreibt oder Thread 2 x liest, mind. 1 Write-Access) \textcolor{red}{get-Statements} \textcolor{red}{Berechnungen in synchronized Parameter-Liste}
 
 \textbf{Data Race} nebenläufiger unsynchronisierter R-W/W-W Zugriff auf gleiche Variable (Speicher), keine garantierte Sichtbarkeit/Ordnung $\rightarrow$ \lstinline{volatile} und alle Synchronisationprimitiven lösen auf, \textcolor{darkGreen}{Atomarität behebt Data Race}
 
 \textbf{Deadlock} Gegenseitiges Aussperren von Threads, Ressource wird nicht mehr frei \textcolor{red}{Geschachtelte Locks} Locks in Locks \textcolor{red}{zyklische Warteabhängigkeiten} (in synchronized anderes Objekt verwendet) Thread T1 ruft a.fn(b) auf, Thread T2 ruft b.fn(a) auf, T1 sperrt a, T2 sperrt b, T1 ruft geschachtelt ''b'' auf (ist durch T2 blockiert), T2 ruft geschachtelt ''a'' auf (ist durch T1 blockiert) \textcolor{darkGreen}{C\# mit Task-Abhängigkeiten nicht möglich}, \textcolor{darkGreen}{Lineare Sperrordnung} nur geschachtelt in aufsteigender Reihenfolge sperren
 
-\textbf{LiveLocks Threads haben sich gegenseitig permanent blockiert, führen aber noch Warteinstruktionen aus (verbrauchen CPU während Deadlock)
+\textbf{LiveLocks} Threads haben sich gegenseitig permanent blockiert, führen aber noch Warteinstruktionen aus (verbrauchen CPU während Deadlock)
 
 \textbf{Starvation} Kontinuierliche Fortschrittsbehinderung von Threads wegen Fairness-Problemen, Bedingung wird von wartenden Thread erfüllt aber immer wieder überholt, \textcolor{red}{Java Monitor sehr anfällig}, Atomare Operationen und while auch! \textcolor{darkGreen}{Fairness einschalten}
 

@@ -1,5 +1,5 @@
 \section{Concurrency - JavaScript}
-Grundsätzlich Single-Threaded mit einem Event-Loop, schützt nicht vor Race Conditions
+Grundsätzlich Single-Threaded mit einem Event-Loop, \textcolor{red}{schützt nicht vor Race Conditions}
 
 \textbf{Promise} CompletableFuture \lstinline{Promise.all()} \lstinline{Promise.any()} läuft bis zum await synchron
 
@@ -38,20 +38,20 @@ function fibonacci(n) {
 
 \textbf{Shared Memory} muss explizit definiert werden $\rightarrow$ \lstinline{multiprocessing.Value}, erfordert Angabe eines Type-Codes oder ctypes
 
-\begin{lstlisting}
+\begin{lstlisting}[style=Python]
 from multiprocessing import Process
 ...
-result = Value('i', -1, lock=False) # oder: Value(c_int, -1 /* Initialwert des Shared-Memory */, lock=False)
+result = Value('i', -1, lock=False)  oder: Value(c_int, -1 ''' Initialwert des Shared-Memory ''', lock=False)
 process = Process(target=compute_fibonacci, args=(10, result))
 ...
-def compute_fibonacci(n, result ) // Hilfsfunktion zum Speichern des Resultats
+def compute_fibonacci(n, result ) # Hilfsfunktion zum Speichern des Resultats
   result.value = fibonacci(n)
 \end{lstlisting}
 
 
 \subsection{Threads}
 
-\begin{lstlisting}
+\begin{lstlisting}[style=Python]
 from threading import Thread
 if __name__ == '__main__':
   t = Thread(target=fibonacci, args=(10,) )
@@ -63,18 +63,18 @@ if __name__ == '__main__':
 \subsection{Prozesse}
 
 \begin{minipage}[t]{0.5\linewidth}
-    \begin{lstlisting}
+    \begin{lstlisting}[style=Python]
 from multiprocessing import Process
-// bei Process zwingend notwendig (sonst wird der start immer wieder neu aufgerufen)!
+# bei Process zwingend notwendig (sonst wird der start immer wieder neu aufgerufen)!
 if __name__ == '__main__':
-  p = Process(target=fibonacci, args=(10,) ) // Funktionen und Argumente müssen "picklebar" (serialisierbar) sein
+  p = Process(target=fibonacci, args=(10,) ) # Funktionen und Argumente müssen "picklebar" (serialisierbar) sein
   p.start()
   ...
   p.join()
     \end{lstlisting}
 \end{minipage}
 \begin{minipage}[t]{0.48\linewidth}
-    \begin{lstlisting}
+    \begin{lstlisting}[style=Python]
 from multiprocessing import Process
 if __name__ == '__main__':
   total_primes = 0
@@ -91,40 +91,41 @@ if __name__ == '__main__':
 
 \subsection{Pools}
 
-\begin{lstlisting}
+\begin{lstlisting}[style=Python]
 from concurrent.futures.process import ProcessPoolExecutor
-// oder from concurrent.futures.thread import ThreadPoolExecutor
+# oder from concurrent.futures.thread import ThreadPoolExecutor
 
 if __name__ == '__main__':
   with ProcessPoolExecutor() as pool:
   	future = pool.submit(fibonacci, 10)
-  	print(future.result()) // Blockiert, bis Task beendet wurde
+  	print(future.result()) # Blockiert, bis Task beendet wurde
 
-  	multiple = pool.map(fibonacci, [1, 2, 4, 10, 30]) // gleich zu berechnende Liste übergeben
+    # gleich zu berechnende Liste übergeben
+  	multiple = pool.map(fibonacci, [1, 2, 4, 10, 30])
   	for result in multiple:
-  	  print(result) // Blockierender Generator: Wartet auf jeweiliges Resultat (Aufrufreihenfolge wird berücksichtigt)
-    all_results = list(multiple) // Alternative
+  	  print(result) # Blockierender Generator: Wartet auf jeweiliges Resultat (Aufrufreihenfolge wird berücksichtigt)
+    all_results = list(multiple) # Alternative
 \end{lstlisting}
 
 \subsection{asyncio (async/await)}
 
-Coroutinen werden erst beim zugehörigen await ausgeführt (keine parallele Ausführung, ausser Coroutine wird als Task verpackt $\rightarrow$ \lstinline{asyncio.create_task(<Coroutine>)} / \lstinline{asyncio.gather(<Coroutine1>, <Coroutine2>, ...)})
+\textcolor{red}{Coroutinen werden erst beim zugehörigen await ausgeführt} keine parallele Ausführung, ausser Coroutine wird als Task verpackt $\rightarrow$ \lstinline{asyncio.create_task(<Coroutine>)} / \lstinline{asyncio.gather(<Coroutine1>, <Coroutine2>, ...)})
 
-\begin{lstlisting}
+\begin{lstlisting}[style=Python]
 import asyncio
-async def sub_routine(n): % Coroutine-Functions
+async def sub_routine(n): # Coroutine-Functions
   print(f'Start {n}')
   await asyncio.sleep(1)
   print(f'Ende {n}')
 
 async def main():
-  coroutine1 = sub_routine(1) % return: Coroutine-Object
+  coroutine1 = sub_routine(1) # return: Coroutine-Object
   coroutine2 = sub_routine(2)
   await coroutine2
   await coroutine1
 
 if __name__ == '__main__':
-  asyncio.run(main()) // start-coroutine, startet asyncio Event-Loop
+  asyncio.run(main()) # start-coroutine, startet asyncio Event-Loop
 \end{lstlisting}
 Keine parallele Ausführung. → async
 Methoden werden erst beim zugehörigem await ausgeführt

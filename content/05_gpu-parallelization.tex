@@ -139,7 +139,7 @@ cudaMatrixMult(float *A, float *B, float *C) {
 
 \subsection{Optimierungstechniken}
 
-\textbf{Shared Memory (Cache)} Synchronisation, nur innerhalb gleichen Blocks sichtbar, \lstinline{__shared__} definiert Shared Memory (Speicher-Allokation), \lstinline{__syncthreads()} synchronisiert alle Threads innerhalb eines Blocks (notwendig für effizientes Caching) \textcolor{red}{möglichst nicht in if/else setzen} \textcolor{red}{nutzlos wenn jeder Thread auf ein anderes Element zugreift}
+\textbf{Shared Memory (Cache)} Synchronisation, nur innerhalb gleichen Blocks sichtbar, \lstinline{__shared__} definiert Shared Memory (Speicher-Allokation), \lstinline{__syncthreads()} synchronisiert alle Threads innerhalb eines Blocks (notwendig für effizientes Caching) \textcolor{red}{möglichst nicht in if/else setzen}, \textcolor{red}{nutzlos wenn jeder Thread auf ein anderes Element zugreift}
 
 \textcolor{blue}{Tiled Transposing} Jeweils ein Tile mit Coalescing vom Device Memory ins Shared Memory einlesen. SyncThreads. Danach vom Shared Memory das Transponierte Element mit Coalescing zurück in Device Memory schreiben
 
